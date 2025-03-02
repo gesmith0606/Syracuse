@@ -1,4 +1,0 @@
-/*! Copyright 2003-2018 Rustici Software, LLC All Rights Reserved. Rustici-Engine 20.1.1 2022-01-25T00:47:24+0000 4440405 Media Content Utility File */
-
-var loadSupportFiles=function(e,t,n){"use strict";var r,i,l=n||0;e[l]?(-1<(r=e[l]+(new Date).toISOString().slice(0,10)).indexOf(".js")||-1<r.indexOf("www.youtube.com/iframe_api")?((i=document.createElement("script")).type="text/javascript",i.src=r):-1<r.indexOf(".css")&&((i=document.createElement("link")).rel="stylesheet",i.href=r),i.onload=i.onerror=function(){loadSupportFiles(e,t,l+=1)},document.head.appendChild(i)):null!=t&&t(null)};
-//# sourceMappingURL=utils-min.js.map
