@@ -1,0 +1,12 @@
+# Name of File: PayRate.py
+# Date Create: 01/12/2022
+# Created by: George Smith 
+# Purpose: to get user input and generate pay rate  
+#
+# 
+
+hours = input ('What is the number of hours worked?')
+rate = input ('What is the payrate?)
+# Calculate area 
+pay = float (hours) * float(rate)
+print('The pay is:', pay) 

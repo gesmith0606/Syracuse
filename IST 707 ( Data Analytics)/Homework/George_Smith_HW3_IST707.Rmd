@@ -1,0 +1,148 @@
+---
+title: "George_Smith_HW3_IST707"
+author: "George Smith"
+date: "7/25/2021"
+output: pdf_document
+---
+# Introduction 
+
+The purpose of this report is to conduct association rule discovery on the bank dataset. This will be completed by first conducting the necessary preprocesssing steps, association rule discovery, and setting PEP on the right hand side of the rules to view the rules that are generated. Once these rules are generated the top 5 most "interesting" rules will be discussed in detail. 
+
+#Load the libraries 
+```{r}
+library(arules)
+library(arulesViz)
+```
+
+# load the dataset
+```{r}
+bank <- read.csv("C:/Users/GeorgeSmith/Documents/bankdata_csv_all (1).csv")
+length(which(is.na(bank)))
+```
+The dataset has no blank values 
+
+# view the data 
+```{r}
+str(bank)
+```
+We see 600 observations of 12 variables including id, age, sex, region, income, married, children, car, save_act, current act, mortgage, and pep 
+
+# preprocess
+# remove ID fields
+```{r}
+bank <- bank[,-1]
+```
+# discretize or convert fields to nominal
+# using factor
+```{r}
+bank$sex <- factor(bank$sex)
+bank$region <- factor(bank$region)
+bank$married <- factor(bank$married)
+bank$children <- factor(bank$children)
+bank$car <- factor(bank$car)
+bank$save_act <- factor(bank$save_act)
+bank$current_act <- factor(bank$current_act)
+bank$mortgage <- factor(bank$mortgage)
+bank$pep <- factor(bank$pep)
+# using cut
+bank$age <- cut(bank$age, breaks = c(10,20,30,40,50,60,70), 
+                labels=c("teens", "twenties", "thirties", "fourties", "fifties", 
+                         "sixties"))
+min_inc <- min(bank$income) - 1
+max_inc <- max(bank$income)
+bins <- 5
+width <- (max_inc - min_inc)/bins
+bank$income <- cut(bank$income, breaks=seq(min_inc, max_inc, width))
+str(bank)
+```
+All fields have been converted to Factors 
+
+# any missing values? 
+```{r}
+length(which(is.na(bank)))
+```
+No missing values were identified in the data set 
+
+# check for incomplete rows
+```{r}
+nrow(bank[!complete.cases(bank),])
+```
+NO incomplete rows were identified in the data set 
+
+# check for complete rows
+```{r}
+nrow(bank[complete.cases(bank),])
+```
+600 complete rows were identified in the data set 
+
+
+# generate rules and explore data; note the low support level at this point
+```{r}
+rules <- apriori(bank, parameter = list(supp=0.001, conf = 0.8))
+```
+# Rounding rules to 2 digits
+```{r}
+options(digits=2)
+```
+# get summary info about all rules
+```{r}
+summary(rules)
+```
+
+# sort the rules to view most relevant first (confidence)
+```{r}
+rules <- sort(rules, by="confidence", decreasing=TRUE)
+inspect(rules[1:20])
+```
+
+# sort the rules to view based on lift
+```{r}
+rules <- sort(rules, by="lift", decreasing=TRUE)
+inspect(rules[1:20])
+```
+
+# "minlen" is to avoid empty LHS items
+```{r}
+rules2 <- apriori(data = bank, parameter=list(supp=0.001,conf=0.08,minlen=3))
+rules2 <- sort(rules2, by="lift", decreasing=TRUE)
+inspect(rules2[1:20])
+```
+
+# if we want to target items to generate rules (for example, pep=YES)
+```{r}
+rules3 <- apriori(data = bank, parameter=list(supp=0.001,conf=0.08,minlen=2),
+                  appearance = list(default="lhs", rhs="pep=YES"), 
+                  control=list(verbose=F))
+rules3 <- sort(rules3, decreasing = TRUE, by="lift")
+inspect(rules3[1:20])
+```
+We can view the top 20 strongest rules by confidence interval for pep = yes 
+# we can set the left hand side to be "pep=YES" and find its antecedents
+```{r}
+rules4 <- apriori(data = bank, parameter=list(supp=0.001,conf=0.08,minlen=2),
+                  appearance = list(default="rhs", lhs="pep=YES"), 
+                  control=list(verbose=F))
+rules4 <- sort(rules4, decreasing = TRUE, by="lift")
+rules4 <- sort(rules4, decreasing = TRUE, by="confidence")
+inspect(rules4[1:5])
+```
+#discussion 
+
+Based on the above analysis I found the 5 most interesting rules to be: 
+
+1. LHS values of region=SUBURBAN,income=(5.15e+04,6.31e+04],mortgage=NO, and a RHS of PEP = yes . This rule has support confidence and lift values of .0033, 1, and 2.2 respectivley. I found this rule interesting as it seems strange that a suburban resident with no mortgage would be looking to invest in a PEP. This led me to question maybe this resident as potentially paid their mortgage in full, and is looking to invest additional funds. The support value pf .0033 means represents the fraction of instances that contain the discussed itemset. The confidence score of 1 means that every instances of LHS the RHS has occured. the lift value of 2.2 is a measyre of dependent or correlated events. A value greater than 1 represents a meaninful event. 
+
+2. LHS values of income=(5.15e+04,6.31e+04], children=1 and RHS of PEP = yes. This rule has support confidence and lift values of .0150 , 1, and 2.2 respectively. This rule is interesting as I would think customers with 1 child would be less likely to invest in a PEP than those with no children. As having no children would allow for additional investment income. 
+
+3.LHS values of region=SUBURBAN, income=(5.15e+04,6.31e+04], car=NO and RHS of PEP = yes. This rule has support confidence and lift values of .033 , 1, 2.2 respectively. This rule is interesting as I would think being a suburban resident and not having a car would be a result of finances being allocated elsewhere, however these customers are investing in PEP. 
+      
+4. LHS values of sex=FEMALE, region=SUBURBAN,income=(5.15e+04,6.31e+04] and RHS of PEP = yes. This rule has support confidence and lift values of .0033, 1, and 2.2 respectively. I found this interesting as I would think females would be less likely to invest in a PEP. 
+
+5. LHS values of region=SUBURBAN,income=(5.15e+04,6.31e+04],married=NO and RHS values of PEP = yes. This rule has support confidence and lift values of .0017, 1, and 2.2 respectively. This rule is interesting as I would think customers who are not married would spend more money on themselves rather than looking to invest in PEP. 
+
+# conclusion 
+
+In conlcusion, after conducting the necessary preprocesssing steps, association rule discovery, and setting PEP on the right hand side of the rules to view the rules that are generated. I was able to successfully analyze the bank data set using association rules to  identify the top 5 most interesting rules based on my personal opinion. 
+
+
+

@@ -1,0 +1,197 @@
+---
+title: "George_Smith_IST707_Project"
+author: "George Smith"
+date: "8/9/2021"
+output: pdf_document
+---
+# Introduction 
+Sumo wrestling is a competitive form of wrestling, where rikishi (fighter) look to push their opponent out of the dohyo (circular ring) or onto the ground. Sumo originated in Japan and is the only country where it practiced professionally. As a result a majority of the world is not familiar with sumo, and would not know the first thing about selecting a potential winner of a sumo match. The purpose of this project is to use data mining techniques to predict the potential winner of a sumo match. 
+
+# About the data 
+The data is an aggregation results of every bout (top two divisions) in Japanese sumo wrestling grand tournaments (honbasho) from 1985 until 2019 scraped from http://sumodb.sumogames.de/Results.aspx?b=198301&d=15&simple=on. The data can be found here in spreadsheet format https://data.world/cervus/sumo-results
+
+#install packages 
+```{r}
+if(!require("tm")) {install.packages("tm")}
+if(!require("stringr")) {install.packages("stringr")}
+if(!require("stringi")) {install.packages("sttringi")}
+if(!require("Matrix")) {install.packages("Matrix")}
+if(!require("rpart")) {install.packages("rpart")}
+if(!require("rpart.plot")) {install.packages("rpart.plot")}
+if(!require("rattle")) {install.packages("rattle")}
+if(!require("RColorBrewer")) {install.packages("RColorBrewer")}
+if(!require("ggplot2")) {install.packages("ggplot2")}
+if(!require("neuralnet")) {install.packages("neuralnet")}
+if(!require("fastDummies")) {install.packages("fastDummies")}
+```
+# libraries 
+```{r}
+library(stringr)
+library(stringi)
+library(Matrix)
+library(dplyr)
+library(ggplot2)
+library(rpart)
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+library(tidyr)
+library(dplyr)
+library(neuralnet)
+library(fastDummies)
+```
+
+# read in data 
+```{r}
+sumo <- read.csv("C:/Users/GeorgeSmith/Documents/IST 707 Project/2019.csv")
+
+str(sumo)
+
+```
+# view the Data Frame 
+```{r}
+head(sumo)
+```
+
+# Analyze the columns 
+
+```{r}
+unique(sumo$basho)
+```
+
+```{r}
+unique(sumo$day)
+```
+# Used the dplyr package to drop the rikishi2_win, rikishi1_result,and rikishi2_result column because their relationship to rikishi1_win is obvious and leads to a poor model 
+
+```{r}
+sumo <-select (sumo,-c(rikishi2_win,rikishi1_result,rikishi2_result, ))
+```
+
+# Need to exclude the below records as they do not have enought values to be run in the models
+
+```{r}
+sumo <- sumo[!(sumo$rikishi1_rank=="Ms5e"| 
+sumo$rikishi1_rank=="Ms5w" | 
+sumo$rikishi1_rank=="Ms2w" |
+sumo$rikishi1_rank=="Ms3w" |
+sumo$rikishi1_rank=="Ms4e" |
+sumo$rikishi1_rank=="Ms4w" |
+sumo$rikishi2_rank=="Ms5w" | 
+sumo$rikishi2_rank=="Ms2w" |
+sumo$rikishi2_rank=="Ms3w" |
+sumo$rikishi2_rank=="Ms4e" |
+sumo$rikishi2_rank=="Ms5e" |
+sumo$rikishi2_rank=="Ms4w") ,]
+```
+
+# Need to remove these values as well to run models 
+```{r}
+sumo <- sumo[!(sumo$rikishi1_shikona =="Chiyonoo"| sumo$rikishi1_shikona=="Kotodaigo" | 
+sumo$rikishi1_shikona =="Chiyonoo" | 
+sumo$rikishi1_shikona =="Kotokuzan"| 
+sumo$rikishi1_shikona=="Kototebakari"| 
+sumo$rikishi1_shikona == "Akua"|
+sumo$rikishi1_shikona == "Nishikifuji"|
+sumo$rikishi1_shikona == "Tamaki" |
+sumo$kimarite == "okurigake" |
+sumo$rikishi2_shikona == "Akua" |
+sumo$rikishi2_shikona == "Tamaki" ) ,]
+```
+
+# view the first records of out data frame 
+```{r}
+head(sumo)
+```
+## run the decision tree 
+# set the training ratio 
+```{r}
+trainRatio <- .60
+
+set.seed(11) # Set Seed so that same sample can be reproduced in future also
+
+# create the training and testing data
+sample <- sample(1:nrow(sumo), trainRatio*nrow(sumo), replace = F)
+dfTrain <- sumo[sample,]
+dfTest <- sumo[-sample,]
+
+# run the decision tree
+tree.train <- rpart(rikishi1_win ~ ., data = dfTrain, method="class", 
+                    minsplit = 2, minbucket = 1)
+```
+
+#plot the decision tree
+```{r}
+fancyRpartPlot(tree.train)
+```
+# predict against the test data
+```{r}
+tree.pred <- predict(tree.train, dfTest, type="class")
+
+summary(tree.pred)
+```
+
+# predict if a fighter will win a given matchup using decision tree  
+```{r}
+with(dfTest, table(tree.pred,rikishi1_win ))
+```
+Using the decision tree approach we were able to predict 528 instances of losses and 550 instances of wins correctly. This means that the decision tree model was able to predict sumo wrestling losses with 54% accuracy and wins with 56 % accuracy. 
+
+# Run neural network
+```{r}
+head(sumo)
+```
+
+# Used the fast dummies package to make categorical variables numerical  
+```{r}
+transformed_data_nn <- dummy_cols(sumo, select_columns = c("rikishi1_rank","rikishi1_shikona", "kimarite","rikishi2_rank","rikishi2_shikona"), remove_first_dummy = FALSE, remove_most_frequent_dummy = FALSE, ignore_na = FALSE, split=NULL)
+```
+
+# drop original column as dummy variables exist 
+```{r}
+transformed_data_nn <-select (transformed_data_nn,-c(rikishi1_rank,rikishi1_shikona,kimarite, rikishi2_rank, rikishi2_shikona ))
+```
+# Making sure the above code worked 
+```{r}
+#head(transformed_data_nn)
+```
+# create training and testing data 
+```{r}
+trainRatio <- .60
+
+set.seed(11) # Set Seed so that same sample can be reproduced in future also
+
+# create the training and testing data
+sample <- sample(1:nrow(transformed_data_nn), trainRatio*nrow(transformed_data_nn), replace = F)
+dfTrainNN <- transformed_data_nn[sample,]
+dfTestNN <- transformed_data_nn[-sample,]
+```
+
+#run the NN
+```{r}
+sumonet <- neuralnet(rikishi1_win ~ ., data = dfTrainNN , hidden=4, lifesign="minimal", linear.output = FALSE, threshold=.01)
+```
+
+# NN plot
+```{r}
+plot(sumonet, rep="best")
+```
+
+# predict against the test data
+```{r}
+NN.pred <- predict(sumonet, dfTestNN, type="class")
+
+table(NN.pred)
+```
+#round the predictions to be either win (1) or loss (0) 
+```{r}
+NNPredRound<-round(NN.pred)
+```
+# make predictions with the NN 
+```{r}
+with(dfTestNN, table(NNPredRound,rikishi1_win ))
+```
+Using the Neural Network approach we were able to correctly predict 876 losses correctly and 93 wins correctly. 90% of the loss predictions were correct, compared to only 9% of the win predictions being correct. I believe these poor results are due to having the create dummy variables for a majority of the data set so that the data would be usable for the Neural Network Model. I believe models such as the decision tree that are able to use categorical data would be better suited to make predictions on the Sumo data set.  
+
+# Conclusion 
+Using machine learning techniques including Decision Tree and Neural Network Models we were able to successfully predict if a sumo wrestler would win or lose a given match. Based on the above analysis it appears that the Decision Tree model was better suited for the Sumo data used as the Neural Network was able to only predict 9% of wins correctly. Although 56%  win prediction accuracy is not incredible it is an improvement over simply guessing the result of a given match. 
