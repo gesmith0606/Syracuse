@@ -1,0 +1,57 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+library("jsonlite")
+library("curl")
+
+### step 1: load the data 
+```{r}
+df <- fromJSON("https://opendata.maryland.gov/resource/pdvh-tf2u.json")
+print(df)
+```
+
+
+### Step 2: Clean the data - these steps appear to already be compelted when printing the DF 
+#df <- df[,-(1:8)] didnt need to do this with new dataset as instructed 
+
+```{r}
+namesOfColumns <- c("CASE_NUMBER","BARRACK","ACC_DATE","ACC_TIME","ACC_TIME_CODE","DAY_OF_WEEK","ROAD","INTERSECT_ROAD","DIST_FROM_INTERSECT","DIST_DIRECTION","CITY_NAME","COUNTY_CODE","COUNTY_NAME","VEHICLE_COUNT","PROP_DEST","INJURY","COLLISION_WITH_1","COLLISION_WITH_2")
+names(df) <- namesOfColumns
+head(df)
+```
+### Step 3: Understand the data using SQL (via SQLDF) 
+install.packages("sqldf")
+library("sqldf")
+```{r}
+sqldf("select count(*) from df where DAY_OF_WEEK == 'SUNDAY'")
+```
+
+```{r}
+sqldf("select count(*) from df where INJURY == 'YES' AND INJURY IS NOT NULL")
+```
+
+```{r}
+sqldf("select DAY_OF_WEEK, count(*) from df where INJURY == 'YES'  group by DAY_OF_WEEK")
+```
+
+###step 4: Understand	the	data	using	tapply
+install.packages("plyr")
+library(plyr)
+```{r}
+acc_on_sunday <- tapply(df$DAY_OF_WEEK,df$DAY_OF_WEEK =="SUNDAY",count)
+acc_on_sunday
+```
+
+
+```{r}
+acc_with_injury <- tapply(df$INJURY,df$INJURY == "YES",count)
+acc_with_injury
+```
+
+```{r}
+injury_list_day <- tapply(df$DAY_OF_WEEK,df$INJURY=="YES",count)
+injury_list_day
+```

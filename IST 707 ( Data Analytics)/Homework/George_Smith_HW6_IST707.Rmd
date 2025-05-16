@@ -1,0 +1,174 @@
+---
+title: "George_Smith_HW6_IST707"
+author: "George Smith"
+date: "8/22/2021"
+output: pdf_document
+---
+#Introduction 
+The below exercise demonstrates the decision tree analysis and naive Bayes classification algorithms. We will apply these algorithms for handwriting recognition and conduct analysis to determine which algorithm is better suited for this type of prediction.  
+
+# Installs 
+```{r}
+library(dplyr)
+library(caret)
+library(rpart.plot)
+library(ggplot2)
+library(e1071)
+
+```
+
+#First load the training data in csv format, and then convert "label" to nominal variable.
+```{r}
+#setwd("~/Documents")
+filename <-"digit_train.csv"
+```
+
+```{r}
+DigitTotalDF <- read.csv(filename, header = TRUE, stringsAsFactors = TRUE)
+```
+
+```{r}
+DigitTotalDF$label<-as.factor(DigitTotalDF$label)
+dim(DigitTotalDF)
+```
+```{r}
+head(DigitTotalDF)
+```
+
+```{r}
+library(FactoMineR)
+```
+
+#Create a random sample of n% of train data set
+
+```{r}
+pca_digits = PCA(t(subset(DigitTotalDF, select = -c(label))))
+DigitTotalDF = data.frame(DigitTotalDF$label,pca_digits$var$coord)
+```
+
+# reduce the total number of data samples used
+```{r}
+percent <- .25
+set.seed(275)
+DigitSplit <- sample(nrow(DigitTotalDF),nrow(DigitTotalDF)*percent)
+DigitDF <- DigitTotalDF[DigitSplit,]
+dim(DigitDF)
+```
+
+```{r}
+(nrow(DigitDF))
+```
+
+
+# Don't use the test data set in this example since it's not labeled
+# instead, run kfold crossvalidation using the data from the "train" csv file
+
+# Create k-folds for k-fold cross validation
+## Number of observations
+```{r}
+N <- nrow(DigitDF)
+## Number of desired splits
+
+kfolds <- 10
+
+## Generate indices of holdout observations
+## Note if N is not a multiple of folds you will get a warning, but is OK.
+
+holdout <- split(sample(1:N), 1:kfolds)
+
+```
+
+# Run training and Testing for each of the k-folds
+```{r}
+AllResults<-list()
+AllLabels<-list()
+for (k in 1:kfolds){
+  DigitDF_Test <- DigitDF[holdout[[k]], ]
+  DigitDF_Train <- DigitDF[-holdout[[k]], ]
+}
+```
+
+## View the created Test and Train sets
+```{r}
+(head(DigitDF_Train))
+```
+```{r}
+(table(DigitDF_Test$DigitTotalDF.label))
+```
+
+## Make sure you take the labels out of the testing data
+```{r}
+DigitDF_Test_justLabel <- DigitDF_Test$DigitTotalDF.label
+DigitDF_Test_noLabel <- DigitDF_Test[, -1]
+(head(DigitDF_Test_noLabel))
+```
+###Naive Bayes prediction ussing e1071 package
+#Naive Bayes Train model
+```{r}
+  train_naibayes <- naiveBayes(DigitTotalDF.label~., data=DigitDF_Train, na.action = na.pass)
+train_naibayes
+summary(train_naibayes)
+```
+#Naive Bayes model Prediction
+```{r}
+  nb_Pred <- predict(train_naibayes, DigitDF_Test_noLabel)
+  nb_Pred
+```
+#Testing accurancy of naive bayes model with Kaggle train data sub set
+```{r}
+(confusionMatrix(nb_Pred, DigitDF_Test$DigitTotalDF.label))
+  
+confusionMatrix(nb_Pred, DigitDF_Test$DigitTotalDF.label)
+```
+#Accumulate results from each fold, if you like
+```{r}
+  AllResults <- c(AllResults,nb_Pred)
+  AllLabels <- c(AllLabels, DigitDF_Test_justLabel)
+  ##Visualize
+  plot(nb_Pred, ylab = "Density", main = "Naive Bayes Plot")
+
+confusionMatrix(nb_Pred, DigitDF_Test$DigitTotalDF.label)
+```
+
+### end crossvalidation -- present results for all folds
+
+```{r}
+(table(unlist(AllResults),unlist(AllLabels)))
+```
+# decision tree approach
+```{R}
+filename <-"digit_train.csv"
+DigitTrainDF <- read.csv(filename, header = TRUE, stringsAsFactors = TRUE)
+DigitTrainDF$label = as.factor(DigitTrainDF$label)
+
+test_filename <-"digit_test.csv"
+DigitTestDF <- read.csv(test_filename, header = TRUE, stringsAsFactors = TRUE)
+
+
+trainSplit <- sample(nrow(DigitTrainDF), nrow(DigitTrainDF) * .1)
+testSplit <- sample(nrow(DigitTestDF), nrow(DigitTestDF) * .1)
+
+trainSubset = DigitTrainDF[trainSplit,]
+testSubset = DigitTestDF[testSplit,]
+
+
+decTreeTrain = rpart(label ~ ., data=trainSubset, method='class', control=rpart.control(cp = 0), minsplit=100, maxdepth=11)
+
+trainPred = data.frame(predict(decTreeTrain, trainSubset))
+trainPred = as.data.frame(names(trainPred[apply(trainPred,1,which.max)]))
+colnames(trainPred) = 'prediction'
+trainPred$number = substr(trainPred$prediction, 2,2)
+trainPred = trainSubset %>% bind_cols(trainPred) %>% select(label, number) %>% mutate(label=as.factor(label), number=as.factor(number))
+confusionMatrix(trainPred$label, trainPred$number)
+```
+#plot the decision tree
+```{r}
+library(rpart)
+## Warning: package 'rpart.plot' was built under R version 3.6.3
+library(rattle)
+fancyRpartPlot(decTreeTrain)
+```
+
+
+# conclusion 
+After analyzing both the Naive Bayes and Decision Tree algorithms we received accuracy scores of 63% and 85% respectively. As a result the Decision Tree algorithm appears to be better algorithm for handwriting recognition. 

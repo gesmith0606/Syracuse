@@ -1,0 +1,173 @@
+
+#setwd(" set it to the directory of the source code and data")
+
+############setting the working directory can also be automated by the following
+############ but it causes some funny restarting of R that you need to live through
+
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+#################
+
+############This code allows you to conduct k-means cluster analyses, visualize elbow plots
+############and conduct profile analyses for the sticks kebab segmentation data
+
+
+###########We need the following libraries for this analyses, tidyverse, cluster, and factoextra
+###########first install the packages either using the tools menu or the function, 
+###########install.packages()
+
+library(tidyverse)
+library(cluster)
+library(factoextra)
+
+###########read the segmentation data and drop all rows with missing values
+
+segdat<-read.csv(file="segdat_hw1_r.csv")
+
+segdatc<-na.omit(segdat)
+
+####determine optimal number of clusters
+set.seed(123)
+
+# Compute and plot within sum of squares. The following function automatically provides you a plot 
+# but it computes only within sum of squares
+
+fviz_nbclust(segdatc[,3:6],kmeans,method="wss")
+
+####If you want to use the ratio of within to between cluster variable,
+############use the following set of code
+#############you will see that the eventual plot looks similar for this data for both methods
+
+# function to compute total within-cluster sum of square 
+wss <- function(k) {
+  km<-kmeans(segdatc[,3:6], k, nstart = 10 )
+  
+  km$tot.withinss/km$betweenss
+  
+}
+
+############set the number of clusters you want to try for the analyses
+k.values <- 2:8
+
+# extract wss for 2-8 clusters using the function wss() that was defined before
+wss_values <- map_dbl(k.values, wss)
+
+##########the following gives you the elbow plot using the wss_values that was just computed
+
+plot(k.values, wss_values,
+     type="b", pch = 19, frame = FALSE, 
+     xlab="Number of clusters K",
+     ylab="Total within-between clusters variance")
+
+###repeat cluster analyses with the optimal number of clusters
+kopt<-kmeans(segdatc[,3:6],centers=5,nstart=25)
+
+###########attach cluster membership to the dataframe
+
+cluster<-kopt$cluster
+
+segdatc=cbind(segdatc,cluster)
+
+############find means of segmentation and profile variables by cluster
+#############in the code below, we are taking the means of each variable
+################for each cluster group
+############you can use these means to find, the target custoemr segments (the variable percust)
+###########the characteristics or preferences of each segment (the means of segmentation variables, plan, spend, local, health)
+###########the average age in each segment
+
+segdatc%>%group_by(cluster)%>%summarize(percust=mean(cust),
+                                         plan=mean(plan_carefully),
+                                        spend=mean(control_spending),
+                                        local=mean(purchase_local),
+                                        health=mean(consider_health))
+
+############here you can find the distribution of age, income, and gender for each cluster
+table(segdatc$cluster,segdatc$Age)
+table(segdatc$cluster,segdatc$Income)
+table(segdatc$cluster,segdatc$Gender)
+
+
+###########Get frequency plot of restaurant visits
+#############This one is bit tricky. We have responses on a open ended question here
+############So there are lots of typos etc as is typical of any open ended response
+
+######We will repeat essentially the same process for the First, Second, and Third priority restaurants
+
+
+######get the top 5 first priority restaurants visted by customers in each cluster
+########get the frequency plot first priority restaurants by cluster and 
+#########export the output to a data frame
+
+topres<-data.frame(table(segdatc$first_Frequent_restaurant,segdatc$cluster))
+cnames<-c("restaurant","cluster","frequency")
+names(topres)<-cnames
+
+###########sort the frequency table for each cluster in descending order 
+##########by frequency of responses. This will provide you a list of
+##########restaurants in order of most preferred to least preferred
+###########by each cluster
+
+topres_summary<-NULL
+
+for (i in 1:5){
+  
+  topres_c<-topres%>%filter(cluster==i)
+  topres_c<-topres_c[order(-topres_c$frequency),]
+  topres_top<-topres_c[1:5,]
+  
+  cluster<-rep(i,5)
+  temp_topres<-cbind(cluster,topres_top)
+  
+  topres_summary<-rbind(topres_summary,temp_topres)
+  
+##########topres_summary has the list of top 5 first priority restaurants for each cluster
+  
+  
+}
+
+######get the top 5 second priority restaurants visted by customers in each cluster
+###########the code below has the same logic as first priority restaurants
+
+secres<-data.frame(table(segdatc$second_frequent_restaurant,segdatc$cluster))
+cnames<-c("restaurant","cluster","frequency")
+names(secres)<-cnames
+
+secres_summary<-NULL
+
+for (i in 1:5){
+  
+  secres_c<-secres%>%filter(cluster==i)
+  secres_c<-secres_c[order(-secres_c$frequency),]
+  secres_top<-secres_c[1:5,]
+  
+  cluster<-rep(i,5)
+  temp_secres<-cbind(cluster,secres_top)
+  
+  secres_summary<-rbind(secres_summary,temp_secres)
+  
+  
+}
+
+
+######get the top 5 third priority restaurants visted by customers in each cluster
+###########the code below has the same logic as first priority restaurants
+
+thirdres<-data.frame(table(segdatc$third_frequent_restaurant,segdatc$cluster))
+cnames<-c("restaurant","cluster","frequency")
+names(thirdres)<-cnames
+
+thirdres_summary<-NULL
+
+for (i in 1:5){
+  
+  thirdres_c<-thirdres%>%filter(cluster==i)
+  thirdres_c<-thirdres_c[order(-thirdres_c$frequency),]
+  thirdres_top<-thirdres_c[1:5,]
+  
+  cluster<-rep(i,5)
+  temp_thirdres<-cbind(cluster,thirdres_top)
+  
+  thirdres_summary<-rbind(thirdres_summary,temp_thirdres)
+  
+  
+}

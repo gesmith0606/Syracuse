@@ -1,0 +1,46 @@
+---
+title: "GeorgeSmith_Meaauring_Hit_Rate"
+output: pdf_document
+---
+
+# read in the data 
+```{r}
+df =read.csv(file="bestbuylogit.csv") 
+```
+# creat training and testing data 
+```{r}
+trainRatio <- .60
+set.seed(11) # Set Seed so that same sample can be reproduced in future also
+# create the training and testing data
+sample <- sample(1:nrow(df), trainRatio*nrow(df), replace = F)
+train <- df[sample,]
+test <- df[-sample,]
+```
+
+```{r}
+toforder=as.vector(as.Date(train$firstorder,"%m/%d/%y")-as.Date(train$created,"%m/%d/%y"))  ########calculate difference between first order and create date####################
+head(train)
+retmod=glm(abmedian~new+rprice+creviewcount+creviewavg, family="binomial",data=train)  ########estimate  logistic regression#########
+
+summary(retmod)
+```
+```{r}
+retcoeff=as.matrix(retmod$coefficients,ncol=1) ##########collect coefficients of logistic regression####################
+```
+#########predict probabilites in test data#######################
+```{r}
+testrow=nrow(test)
+```
+
+```{r}
+retdattestx=as.matrix(cbind(rep(2,testrow),test[,3:6]))  #############collect only columns in test that are necessary for prediction. Please note that you may need to change the subscripts you use here to reflect the columns that are significant in your model.
+```
+
+```{r}
+#sigretcoeff=as.matrix(retcoeff[1:6,col=2]     ##################collect only significant coefficients. You would need to look at the results in the output from summary(retmod) in line 20, to determine the significant coefficients to include here################
+```
+
+pbx=retdattestx%*%sigretcoeff   #################calculate utility###################
+pretprob=exp(pbx)/(1+exp(pbx))      ###############calculate probability###################
+pret=(pretprob>runif(testrow))*1    ###############set retain =1 if probability > uniform random number between 0 and 1 (i.e., a coin toss)###########################
+sum(diag(table(pret,test[,3])))/testrow   ##################print the hit rate##############################

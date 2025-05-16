@@ -1,0 +1,340 @@
+---
+title: "George_Smith_IST719_Lab2"
+author: "George Smith"
+date: "10/17/2021"
+output: pdf_document
+---
+# Author George Smith 
+# Purpose: Lab 2, data interogration or data exploration 
+
+# Data exploration Lab 2
+# this code only works for interactive files as this file is on my PC it is not relevant 
+
+# install package
+```{r}
+#install.packages("vioplot")
+#install.packages("plotrix")
+```
+
+```{r}
+#fname <- file.choose()
+```
+# supplemented the above code with the following line 
+```{r}
+tips <- read.csv("C:/Users/GeorgeSmith/Documents/Syracuse/IST 719/tips.csv"
+                 , header = TRUE
+                #, StringASFactors = FALSE
+                )
+```
+# view the name of columns
+```{r}  
+colnames(tips)
+```
+# lets you edit data in spreadsheet view  
+```{r}
+fix(tips)
+```
+
+# lets you view data cant edit 
+```{r}
+#view(tips)
+```
+
+# structure of the data 
+```{r}
+str(tips)
+```
+
+# call rows and columns 
+```{r}
+tips[1,]
+tips[,1]
+tips[3,3]
+tips[1:3,]
+```
+#tells us how many variables are in this subset 
+```{r}
+length(tips [1:3, 2])
+```
+
+# number of dimensions in a data set 
+```{r}
+dim(tips)
+```
+# subsets the dim function 
+```{r}
+dim(tips)[1]
+```
+
+#call a column 
+```{r}
+tips$time 
+```
+# differnt way to call the columns 
+```{r}
+tips[,"time"]
+```
+# plot the total bull column
+```{r}
+plot(tips$total_bill)
+```
+# sorts the data 
+```{r}
+plot(sort(tips$total_bill))
+```
+# boxplot 
+```{r}
+boxplot(tips$total_bill)
+```
+# histogram 
+```{r}
+hist(tips$total_bill)
+```
+
+# density plot
+```{r}
+d <- density(tips$total_bill)
+plot(d)
+polygon(d, col = "orange")
+```
+# boxplot of tips for asynch 
+```{r}
+boxplot(tips$tip)
+```
+# have multiple chars on the same plot 
+```{r}
+par(mfrow = c(2,2))
+boxplot(tips$total_bill)
+hist(tips$total_bill)
+d <- density(tips$total_bill)
+plot(d)
+polygon(d, col = "orange")
+```
+# add a vioplot
+```{r}
+library(vioplot)
+```
+
+```{r}
+vioplot(tips$total_bill)
+```
+
+```{r}
+unique(tips$sex)
+```
+#subet for just males 
+```{r}
+tips.M <- tips[tips$sex == "Male", ]
+```
+# subet only females 
+```{r}
+tips.F <- tips[tips$sex == "Female", ]
+```
+
+```{r}
+par(mfrow = c(2,1), mar = c(2,3,1,2))
+boxplot(tips.F$tip, horizontal = T, ylim = c(1,10))
+boxplot(tips.M$tip, horizontal = T, ylim = c(1,10))
+```
+
+# working with JSON files 
+```{r}
+fname <- "C:/Users/GeorgeSmith/Documents/Syracuse/IST 719/tweet.formated.json"
+```
+# import library 
+```{r}
+library(jsonlite)
+```
+# read in data 
+```{r}
+raw.tweet<- fromJSON(fname, flatten = FALSE)
+```
+# analyze data 
+```{r}
+str(raw.tweet)
+```
+
+```{r}
+names(raw.tweet)
+```
+
+```{r}
+raw.tweet$text
+```
+
+```{r}
+raw.tweet$user$followers_count
+```
+
+```{r}
+raw.tweet[["user"]]
+raw.tweet[["user"]]$followers_count
+raw.tweet[["user"]][["follower_count"]]
+```
+
+# read in new file 
+# based on error message appears to be issues with the underlying file 
+```{r}
+fname3 <- "C:/Users/GeorgeSmith/Documents/Syracuse/IST 719/tweets5814.json"
+#con <- file(fname3, open ="r")
+#tweets <- stream_in(con)
+#close(con)
+```
+
+```{r}
+#dim(tweets)
+```
+
+```{r}
+#tweets$text [1:3]
+```
+
+```{r}
+#boxplot(log10(tweets$user$followers_count), horizontal = TRUE ) 
+```
+# distribution work
+```{r}
+task.time <- c(rnorm(n=30, mean=30, sd =2.25)
+               ,rnorm (n= 30, mean =25, sd = 1.5))
+hist(task.time)
+```
+
+```{r}
+status <- c(rep("AMA", 30), rep("PRO", 30))
+df <- data.frame(time = task.time, status= status)
+
+```
+
+```{r}
+df.grouped <- aggregate(df$time, list(df$status), mean)
+```
+
+```{r}
+colnames(df.grouped) <- c("stat", "time")
+```
+
+```{r}
+df.grouped
+```
+
+```{r}
+barplot(df.grouped$time, names.arg = df.grouped$stat)
+```
+
+```{r}
+M.grouped <- tapply(df$time, list(df$status), mean)
+class(M.grouped)
+```
+
+# returns a matrix or vector same as aggregate 
+```{r}
+tapply(df$time, list(df$status), range)
+```
+
+```{r}
+summary(task.time)
+```
+
+```{r}
+range(task.time)
+```
+
+```{r}
+aggregate(df$time, list(df$status), summary)
+```
+
+```{r}
+table(df$status)
+table(round(df$time,2))
+```
+
+```{r}
+df$sex <- sample(c("M","F"), 60, replace = T)
+
+```
+
+```{r}
+aggregate(df$time, list(df$status, df$sex), mean)
+M <- tapply(df$time, list(df$sex, df$status), mean)
+M <- tapply(df$time, list(df$sex, df$status), mean)
+barplot(M, beside = TRUE)
+```
+
+# reshaping data with tidyr 
+```{r}
+library(tidyr)
+```
+
+```{r}
+n <- 5 
+year <- 2001:(2000 + n)
+q1 <- runif(n = n, min = 100, max = 120)
+q2 <- runif(n=n, min = 103, max = 130)
+q3 <- runif(n=n, min = 104, max = 140)
+q4 <- runif(n=n, min = 108, max = 150)
+
+df.wide<- data.frame(year, q1,q2,q3,q4)
+gather(df.wide, qt, sales, q1:q4)
+```
+
+```{r}
+df.wide %>% gather(qt, sales, q1:q4)
+```
+
+```{r}
+df.long <- df.wide %>% gather(qt, sales, q1:q4)
+o <- order(df.long$year, df.long$qt)
+df.long <- df.long[o,]
+```
+
+```{r}
+df <- data.frame (cat=rep(c("tap", "reg", "zed", "vum"),3)
+                  , group = rep(letters[7:9], 4)
+                  , x= 1:12)
+```
+
+```{r}
+spread(df,cat,x)
+```
+
+# using rect function to build a custom plot 
+```{r}
+library(plotrix)
+n <- 70
+age.min <- 1
+age.max <- 90
+age.range <- c(age.min, age.max)
+m <- round(rescale(rbeta(n,5,2.5), age.range), 0)
+hist(m)
+f <- round(rescale(rbeta(n,5,2.0), age.range), 0)
+x <- age.min : age.max
+f.y <- m.y <- rep (0, length(x))
+```
+
+```{r}
+m.tab <- table(m)
+m.y[as.numeric((names(m.tab)))] <- as.numeric(m.tab)
+
+f.tab <- table(f)
+f.y[as.numeric((names(f.tab)))] <- as.numeric (f.tab)
+
+age.freqs <- data.frame (ages = x, males =m.y, females =f.y)
+
+max.x <- round(1.2 * max(age.freqs[,2:3]), 0)
+plot(c(-max.x, max.x), c(0,100), type = "n", bty = "n", xaxt = "n" 
+     , ylab = "age", xlab = "freq", main = "sample age distribution")
+
+grid()
+last.y <- 0
+for (i in 1:90) {
+    rect(xleft = 0, ybottom = last.y, xright = -age.freqs$males[i]
+       , ytop =age.freqs$ages[i], col = "lightblue2", border = NA)
+       
+    rect(xleft = 0, ybottom = last.y, xright = -age.freqs$females[i]
+       , ytop =age.freqs$ages[i], col = "lightpink", border = NA)
+    
+    last.y <- age.freqs$ages[i]
+}
+```
+
+```
